@@ -25,11 +25,13 @@ def metric_send():
     result = zabbix_sender.send(metric_send)
     print(result)
 
-def metric_get():
+app = FastAPI()
 
+@app.get("/metrics")
+def metric_get():
     metric_get = []
     cpu_loads = psutil.cpu_percent(percpu=True)
-    
+
     # Получение загрузки ядер CPU
     for i, cpu_load in enumerate(cpu_loads):
         metric_get.append(f'cpu_load(cpu={i}) {cpu_load}')
@@ -41,21 +43,15 @@ def metric_get():
     print(response)
     return response
 
-
 def metric(send_interval):
-    app = FastAPI()
-
-    @app.get("/metrics")
-    def metric_return():
-        return metric_get()
-
     # Отправка метрик и получение их значений
-    while True:
-        metric_send()
-        metric_return()
-        time.sleep(send_interval)
-
-    uvicorn.run(app, host="127.0.0.1", port=8080)
+    try:
+        while True:
+            metric_send()
+            metric_get()
+            time.sleep(send_interval)
+    except KeyboardInterrupt:
+        print("Программа завершена")
 
 def argparse_metric():
     parser = argparse.ArgumentParser(description="Отправка метрик в Zabbix через командную строку")
@@ -63,5 +59,6 @@ def argparse_metric():
     args = parser.parse_args()
 
     metric(args.send_interval)
+    uvicorn.run(app, host='127.0.0.1', port=8080)
 
 argparse_metric()
