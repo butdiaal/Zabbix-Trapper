@@ -2,9 +2,9 @@ import time
 import psutil
 import uvicorn
 import argparse
+import threading
 from fastapi import FastAPI
 from pyzabbix import ZabbixMetric, ZabbixSender
-
 
 def metric_send():
     metric_send = []
@@ -39,7 +39,7 @@ def metric_get():
     # Получение общей нагрузки ядер CPU
     metric_get.append(f'cpu_load_avr {cpu_load}')
 
-    response = "\n".join(metric_get)
+    response = " ".join(metric_get)
     print(response)
     return response
 
@@ -47,18 +47,29 @@ def metric(send_interval):
     # Отправка метрик и получение их значений
     try:
         while True:
-            metric_send()
-            metric_get()
+            # Создаем два потока для запуска функций metric_send() и metric_get()
+            send_thread = threading.Thread(target=metric_send)
+            get_thread = threading.Thread(target=metric_get)
+
+            send_thread.start()
+            get_thread.start()
+
+            send_thread.join()
+            get_thread.join()
+
             time.sleep(send_interval)
     except KeyboardInterrupt:
-        print("Программа завершена")
+        pass
 
 def argparse_metric():
-    parser = argparse.ArgumentParser(description="Отправка метрик в Zabbix через командную строку")
-    parser.add_argument("--send-interval", type=int, default=1, help="Интервал отправки метрик в секундах")
-    args = parser.parse_args()
+    try:
+        parser = argparse.ArgumentParser(description="Отправка метрик в Zabbix через командную строку")
+        parser.add_argument("--send-interval", type=int, default=1, help="Интервал отправки метрик в секундах")
+        args = parser.parse_args()
 
-    metric(args.send_interval)
-    uvicorn.run(app, host='127.0.0.1', port=8080)
+        metric(args.send_interval)
+        uvicorn.run(app, host='127.0.0.1', port=8080)
+    except KeyboardInterrupt:
+        pass
 
 argparse_metric()
