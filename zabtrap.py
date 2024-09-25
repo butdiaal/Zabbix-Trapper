@@ -51,9 +51,11 @@ def metric(send_interval):
             send_thread = threading.Thread(target=metric_send)
             get_thread = threading.Thread(target=metric_get)
 
+            # Запускаем потоки
             send_thread.start()
             get_thread.start()
 
+            # Ожидаем завершения потоков
             send_thread.join()
             get_thread.join()
 
@@ -61,14 +63,21 @@ def metric(send_interval):
     except KeyboardInterrupt:
         pass
 
+def run_uvicorn():
+    uvicorn.run(app, host='127.0.0.1', port=8080)
+
 def argparse_metric():
     try:
         parser = argparse.ArgumentParser(description="Отправка метрик в Zabbix через командную строку")
         parser.add_argument("--send-interval", type=int, default=1, help="Интервал отправки метрик в секундах")
         args = parser.parse_args()
 
+        # Запускаем Uvicorn в отдельном потоке
+        uvicorn_thread = threading.Thread(target=run_uvicorn)
+        uvicorn_thread.start()
+        
         metric(args.send_interval)
-        uvicorn.run(app, host='127.0.0.1', port=8080)
+
     except KeyboardInterrupt:
         pass
 
